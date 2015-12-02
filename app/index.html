@@ -54,10 +54,10 @@
 					$scope.msg = "";
 
 					if (event.which == 13 && $scope.valid) {
-						if (parseInt($scope.quantidade, 10) > 0) {
+						if (Number($scope.quantidade)) {
 							console.log("Baixando estoque");
 							//alert('Estoque baixado com sucesso.');
-							$scope.lote.quantidade = $scope.quantidade;
+							$scope.lote.quantidade = parseInt($scope.quantidade, 10);
 							$scope.lotes.push($scope.lote);						
 						} else {
 							$scope.msg = "Quantidade invalida.";
@@ -66,13 +66,14 @@
 						$scope.lote = {};
 						$scope.quantidade = "";
 						$scope.valid = false;
-					}
+					} else if ((event.which == 43 || event.which == 13)) {
+						if ($scope.barcode.length && !$scope.valid) {
 
-			        if (event.which == 43 || event.which == 13) {
-						if ($scope.barcode.length) {
+							$scope.barcode = $scope.barcode.trim().replace(" ", "").replace("-", "").replace(".", "").replace(" ", "").replace("-", "").replace(".", "");
 
-							var tipo = $scope.barcode.split('-')[0];
-							var numero = $scope.barcode.split('-')[1];
+							var tipo = $scope.barcode.substr(0, 2);
+							var numero = $scope.barcode.substr(2, $scope.barcode.length - 4);
+							var digito = $scope.barcode.substr($scope.barcode.length - 2, 2);
 
 							if (tipo && numero) {
 								Inventario.get(tipo, numero).then(function (response) {
@@ -102,18 +103,16 @@
 							$scope.keys = [];
 							$scope.quantidade = "";
 						}
-					} else {
-						if (event.charCode == 42 || event.charCode == 47) {
-							$scope.lote = {};
-							$scope.barcode = "";
-							$scope.keys = [];
-							$scope.quantidade = "";
-							$scope.valid = false;
-						} else if (!$scope.valid && (event.charCode > 47 && event.charCode < 58) || (event.charCode == 45)) {
-							$scope.barcode += String.fromCharCode(event.charCode);	
-						} else if ($scope.valid) {
-							$scope.quantidade += String.fromCharCode(event.charCode);
-						}
+					} else if (event.charCode == 42 || event.charCode == 47) {
+						$scope.lote = {};
+						$scope.barcode = "";
+						$scope.keys = [];
+						$scope.quantidade = "";
+						$scope.valid = false;
+					} else if (!$scope.valid && (event.charCode > 47 && event.charCode < 58) || (event.charCode == 45)) {
+						$scope.barcode += String.fromCharCode(event.charCode);	
+					} else if ($scope.valid) {
+						$scope.quantidade += String.fromCharCode(event.charCode);	
 					}
 
 					$scope.keys.push({"keyCode": event.keyCode, "charCode": String.fromCharCode(event.charCode)});
@@ -133,7 +132,9 @@
 		<article>
 			<!--<h2>Movimentação de Estoque</h2>-->
 			<h1 ng-if="valid">{{ lote.material.codigo }}<br>{{ lote.material.descricao }}</h1>
-			<p ng-repeat="medida in lote.material.medidas">{{ medida.id.medida }} {{ medida.unidade }} {{ medida.valor }}</p>
+			<ul>
+				<li ng-repeat="medida in lote.material.medidas">{{ medida.id.medida }} {{ medida.valor }} {{ medida.unidade }}</li>
+			</ul>
 			<h1 ng-if="!valid">Digite um código de barras : <b>{{ barcode }}</b></h1>
 			<h1 ng-if="valid">Digite a quantidade: {{ quantidade }}</h1>
 		</article>
