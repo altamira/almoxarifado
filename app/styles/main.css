@@ -1,0 +1,60 @@
+html {
+	height: 100%;
+	background: black;
+
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-position: top left;
+	font-family: sans-serif;
+	color: #ffffff;
+}
+/* the main container */
+article{
+	width: 1000px;
+	margin: 0 auto;
+	background: #6cbf00;
+	border: 10px solid white;
+	margin-top: 80px;
+	position: relative;
+	padding: 30px;
+	border-radius: 20px;
+}
+.erro {
+	width: 1000px;
+	margin: 0 auto;
+	background: #6cbf00;
+	border: 10px solid white;
+	margin-top: 80px;
+	position: relative;
+	padding: 30px;
+	border-radius: 20px;
+	color: red;
+}
+/* the small text paragraphs */
+article p,
+article > footer{
+padding-bottom: 1em;
+line-height: 1.4em;
+}
+/* the fieldsets' legends */
+article legend{
+font-family: 'Port Lligat Sans', cursive;
+display: block;
+color: white;
+font-size: 25px;
+padding-bottom: 10px;
+}
+
+.label{
+display: block;
+float: left;
+clear: left;
+}
+
+article ul li {
+	border: 1px solid white;
+	border-radius: 5px;
+	margin: 10px;
+	padding: 10px;
+	font-family: courier;
+}

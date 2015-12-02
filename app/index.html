@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="iso-8859-1">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+		<title>Altamira - Almoxarifado</title>
+		<link rel='stylesheet' type='text/css' href='styles/main.css'>
+		<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+		<!-- <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script> -->
+		<script>
+			var app = angular.module('myApp', []);
+
+			// servico de inventario
+		    app.service('Inventario', function ($http) {
+		    	this.getAll = function () {
+		            return $http.get('http://192.168.0.212/materialInventarios');
+		        }
+		    	this.get = function (tipo, numero) {
+		            return $http.get('http://192.168.0.212/materialInventarios/search/findByIdTipoAndIdNumero?tipo=' + tipo + '&numero=' + numero);
+		        }
+		        this.medidas = function (tipo, numero) {
+		        	return $http.get('http://192.168.0.212/materialInventarioMedidas/search/findByIdTipoAndIdNumero?tipo=' + tipo + '&numero=' + numero);
+		        }
+		    });
+
+			// servico de materiais
+		    app.service('Material', function ($http) {
+		    	this.getAll = function () {
+		            return $http.get('http://192.168.0.212/materials');
+		        }
+		    	this.get = function (codigo) {
+		            return $http.get('http://192.168.0.212/materials/' + codigo);
+		        }
+		    });
+
+			app.controller('myCtrl', ['$scope', '$document', 'Inventario', 'Material', function($scope, $document, Inventario, Material) {
+				$scope.keys = [];
+				$scope.lote = {};
+				$scope.lotes = [];
+				$scope.barcode = "";
+				$scope.key_code = 0;
+				$scope.key_press = 0;
+				$scope.quantidade = "";
+				$scope.valid = false;
+
+				$scope.erro = "";
+
+			    $document.bind("keypress", function(event) {
+			        console.debug(event)
+
+					$scope.key_code = String.fromCharCode(event.charCode);
+					$scope.key_press = event.keyCode;
+
+					$scope.msg = "";
+
+					if (event.which == 13 && $scope.valid) {
+						if (parseInt($scope.quantidade, 10) > 0) {
+							console.log("Baixando estoque");
+							//alert('Estoque baixado com sucesso.');
+							$scope.lote.quantidade = $scope.quantidade;
+							$scope.lotes.push($scope.lote);						
+						} else {
+							$scope.msg = "Quantidade invalida.";
+						}
+						$scope.barcode = "";
+						$scope.lote = {};
+						$scope.quantidade = "";
+						$scope.valid = false;
+					}
+
+			        if (event.which == 43 || event.which == 13) {
+						if ($scope.barcode.length) {
+
+							var tipo = $scope.barcode.split('-')[0];
+							var numero = $scope.barcode.split('-')[1];
+
+							if (tipo && numero) {
+								Inventario.get(tipo, numero).then(function (response) {
+									if (response.data._embedded) {
+										$scope.lote = response.data._embedded.materialInventarios[0];
+										Material.get($scope.lote.material).then(function (response) {
+											$scope.lote.material = response.data;
+											Inventario.medidas(tipo, numero).then(function (response) {
+												$scope.lote.material.medidas = response.data._embedded.materialInventarioMedidas;
+												$scope.valid = true;
+											});
+										});
+									} else {
+										$scope.msg = 'Lote não foi encontrado !';
+										$scope.barcode = "";
+										$scope.valid = false;
+									}
+								});
+							} else {
+								$scope.msg = 'Codigo de barras "' + $scope.barcode + '" invalido, verifique.';
+								$scope.barcode = "";
+								$scope.valid = false;
+							}
+							
+						} else {
+							$scope.barcode = "";
+							$scope.keys = [];
+							$scope.quantidade = "";
+						}
+					} else {
+						if (event.charCode == 42 || event.charCode == 47) {
+							$scope.lote = {};
+							$scope.barcode = "";
+							$scope.keys = [];
+							$scope.quantidade = "";
+							$scope.valid = false;
+						} else if (!$scope.valid && (event.charCode > 47 && event.charCode < 58) || (event.charCode == 45)) {
+							$scope.barcode += String.fromCharCode(event.charCode);	
+						} else if ($scope.valid) {
+							$scope.quantidade += String.fromCharCode(event.charCode);
+						}
+					}
+
+					$scope.keys.push({"keyCode": event.keyCode, "charCode": String.fromCharCode(event.charCode)});
+
+			    	$scope.$apply();
+
+			    });
+
+
+			}]);
+
+			
+		</script>
+	</head>
+	<body ng-app="myApp" ng-controller="myCtrl">
+		<h1 ng-if="msg.length" class="erro">{{ msg }}</h1>
+		<article>
+			<!--<h2>Movimentação de Estoque</h2>-->
+			<h1 ng-if="valid">{{ lote.material.codigo }}<br>{{ lote.material.descricao }}</h1>
+			<p ng-repeat="medida in lote.material.medidas">{{ medida.id.medida }} {{ medida.unidade }} {{ medida.valor }}</p>
+			<h1 ng-if="!valid">Digite um código de barras : <b>{{ barcode }}</b></h1>
+			<h1 ng-if="valid">Digite a quantidade: {{ quantidade }}</h1>
+		</article>
+		<article ng-if="lotes.length">
+			<h2>Historico de Movimentação de Estoque</h2>
+			<ul>
+				<li ng-repeat="item in lotes">{{ item.material.codigo }} {{ item.material.descricao }}<br><span>quantidade: {{ item.quantidade }}</span></li>
+			</ul>
+		</article>
+		<!--<h3>Teclado:</h3>
+		Tecla pressionada : <span>{{ key_press }}</span>
+		<br />
+		Codigo da tecla : <span>{{ key_code }}</span>
+		<p>Quantidade: {{ quantidade }}</p>
+		<p>Codigo de barras: [{{ barcode }}]</p>
+		<p>Eventos do teclado:</p>
+		<p ng-repeat="key in keys">{{ key.keyCode }} {{ key.charCode }}</p>-->
+	</body>
+</html>

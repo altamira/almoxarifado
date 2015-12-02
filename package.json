@@ -1,0 +1,22 @@
+{
+  "name": "almoxarifado",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/altamira/almoxarifado.git"
+  },
+  "author": "alessandro.holanda@altamira.com.br",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/altamira/almoxarifado/issues"
+  },
+  "homepage": "https://github.com/altamira/almoxarifado#readme",
+  "devDependencies": {
+    "gulp": "^3.9.0"
+  }
+}
