@@ -10,6 +10,10 @@
 		<script>
 			var app = angular.module('myApp', []);
 
+			app.config(function($httpProvider) {
+		      $httpProvider.defaults.withCredentials = true;
+		    });
+
 			// servico de inventario
 		    app.service('Inventario', function ($http) {
 		    	this.getAll = function () {
@@ -20,6 +24,11 @@
 		        }
 		        this.medidas = function (tipo, numero) {
 		        	return $http.get('http://192.168.0.212/materialInventarioMedidas/search/findByIdTipoAndIdNumero?tipo=' + tipo + '&numero=' + numero);
+		        }
+		        this.post = function(lote) {
+		        	$http.defaults.headers.common.Authorization = 'Basic ' + 'YWRtaW46YWRtaW4='; 
+		        	//return $http.post('http://localhost:8161/api/message/ECO?type=queue&body=' + JSON.stringify(lote));
+		        	return $http.post('http://localhost:8161/api/message/ECO?type=queue', lote);
 		        }
 		    });
 
@@ -34,31 +43,51 @@
 		    });
 
 			app.controller('myCtrl', ['$scope', '$document', 'Inventario', 'Material', function($scope, $document, Inventario, Material) {
-				$scope.keys = [];
 				$scope.lote = {};
 				$scope.lotes = [];
 				$scope.barcode = "";
-				$scope.key_code = 0;
-				$scope.key_press = 0;
 				$scope.quantidade = "";
 				$scope.valid = false;
 
 				$scope.erro = "";
 
+				// variaveis para debug do teclado
+				/*
+				$scope.keys = [];
+				$scope.key_code = 0;
+				$scope.key_press = 0;
+				*/
+
 			    $document.bind("keypress", function(event) {
+			        
+			    	// usado para debug
+			        /*
 			        console.debug(event)
 
 					$scope.key_code = String.fromCharCode(event.charCode);
 					$scope.key_press = event.keyCode;
+					*/
 
 					$scope.msg = "";
 
 					if (event.which == 13 && $scope.valid) {
 						if (Number($scope.quantidade)) {
-							console.log("Baixando estoque");
-							//alert('Estoque baixado com sucesso.');
+							
 							$scope.lote.quantidade = parseInt($scope.quantidade, 10);
-							$scope.lotes.push($scope.lote);						
+
+							$scope.lotes.reverse().push($scope.lote);
+
+		                    if ($scope.lotes.length > 20) {
+		                        $scope.lotes = $scope.lotes.slice($scope.lotes.length - 10);
+		                    }
+
+		                    $scope.lotes = $scope.lotes.reverse();
+
+							Inventario.post($scope.lote).then(function(response) {
+								//console.log("Baixando estoque");
+								//alert('Estoque baixado com sucesso.');
+							});
+					
 						} else {
 							$scope.msg = "Quantidade invalida.";
 						}
@@ -67,7 +96,7 @@
 						$scope.quantidade = "";
 						$scope.valid = false;
 					} else if ((event.which == 43 || event.which == 13)) {
-						if ($scope.barcode.length && !$scope.valid) {
+						if ($scope.barcode.trim().length && !$scope.valid) {
 
 							$scope.barcode = $scope.barcode.trim().replace(" ", "").replace("-", "").replace(".", "").replace(" ", "").replace("-", "").replace(".", "");
 
@@ -75,7 +104,7 @@
 							var numero = $scope.barcode.substr(2, $scope.barcode.length - 4);
 							var digito = $scope.barcode.substr($scope.barcode.length - 2, 2);
 
-							if (tipo && numero) {
+							if (tipo && numero && $scope.barcode.trim().length <= 16) {
 								Inventario.get(tipo, numero).then(function (response) {
 									if (response.data._embedded) {
 										$scope.lote = response.data._embedded.materialInventarios[0];
@@ -93,7 +122,7 @@
 									}
 								});
 							} else {
-								$scope.msg = 'Codigo de barras "' + $scope.barcode + '" invalido, verifique.';
+								$scope.msg = 'Codigo de barras "' + $scope.barcode.substr(1, 16) + '" invalido, verifique.';
 								$scope.barcode = "";
 								$scope.valid = false;
 							}
@@ -115,12 +144,14 @@
 						$scope.quantidade += String.fromCharCode(event.charCode);	
 					}
 
-					$scope.keys.push({"keyCode": event.keyCode, "charCode": String.fromCharCode(event.charCode)});
+					// debug
+					//$scope.keys.push({"keyCode": event.keyCode, "charCode": String.fromCharCode(event.charCode)});
 
 			    	$scope.$apply();
 
-			    });
+			    	event.preventDefault();
 
+			    });
 
 			}]);
 
@@ -139,18 +170,21 @@
 			<h1 ng-if="valid">Digite a quantidade: {{ quantidade }}</h1>
 		</article>
 		<article ng-if="lotes.length">
-			<h2>Historico de Movimentação de Estoque</h2>
+			<h2>Historico de Movimentação de Estoque do Almoxarifado</h2>
 			<ul>
 				<li ng-repeat="item in lotes">{{ item.material.codigo }} {{ item.material.descricao }}<br><span>quantidade: {{ item.quantidade }}</span></li>
 			</ul>
 		</article>
-		<!--<h3>Teclado:</h3>
+		<!-- tags de debug do teclado -->
+		<!--
+		<h3>Teclado:</h3>
 		Tecla pressionada : <span>{{ key_press }}</span>
 		<br />
 		Codigo da tecla : <span>{{ key_code }}</span>
 		<p>Quantidade: {{ quantidade }}</p>
 		<p>Codigo de barras: [{{ barcode }}]</p>
 		<p>Eventos do teclado:</p>
-		<p ng-repeat="key in keys">{{ key.keyCode }} {{ key.charCode }}</p>-->
+		<p ng-repeat="key in keys">{{ key.keyCode }} {{ key.charCode }}</p>
+		-->
 	</body>
 </html>
