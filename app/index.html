@@ -6,7 +6,7 @@
 		<title>Altamira - Almoxarifado</title>
 		<link rel='stylesheet' type='text/css' href='styles/main.css'>
 		<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
-		<!-- <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script> -->
+		<script src="scripts/stomp.js"></script>
 		<script>
 			var app = angular.module('myApp', []);
 
@@ -14,8 +14,30 @@
 		      $httpProvider.defaults.withCredentials = true;
 		    });
 
+			app.service('ActiveMQ', function() {
+
+				var client = Stomp.client( "ws://localhost:61614/stomp", "v11.stomp" );
+
+				client.connect( "", "",
+					function() {
+					    client.subscribe("jms.topic.test",
+					    	function( message ) {
+					    	    alert( message );
+					        }, 
+							{ priority: 9 } 
+					    );
+					 
+						
+					}
+				);
+				this.send = function(topic, msg) {
+					client.send(topic, { priority: 9 }, msg);
+				}
+
+			});
+
 			// servico de inventario
-		    app.service('Inventario', function ($http) {
+		    app.service('Inventario', ['$http', 'ActiveMQ', function ($http, ActiveMQ) {
 		    	this.getAll = function () {
 		            return $http.get('http://192.168.0.212/materialInventarios');
 		        }
@@ -26,11 +48,11 @@
 		        	return $http.get('http://192.168.0.212/materialInventarioMedidas/search/findByIdTipoAndIdNumero?tipo=' + tipo + '&numero=' + numero);
 		        }
 		        this.post = function(lote) {
-		        	$http.defaults.headers.common.Authorization = 'Basic ' + 'YWRtaW46YWRtaW4='; 
+		        	//$http.defaults.headers.common.Authorization = 'Basic ' + 'YWRtaW46YWRtaW4='; 
 		        	//return $http.post('http://localhost:8161/api/message/ECO?type=queue&body=' + JSON.stringify(lote));
-		        	return $http.post('http://localhost:8161/api/message/ECO?type=queue', lote);
+		        	return ActiveMQ.send("jms.topic.test", JSON.stringify(lote));
 		        }
-		    });
+		    }]);
 
 			// servico de materiais
 		    app.service('Material', function ($http) {
