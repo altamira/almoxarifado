@@ -10,28 +10,39 @@
 		<script>
 			var app = angular.module('myApp', []);
 
-			app.config(function($httpProvider) {
+			/*app.config(function($httpProvider) {
 		      $httpProvider.defaults.withCredentials = true;
-		    });
+		    });*/
 
 			app.service('ActiveMQ', function() {
 
-				var client = Stomp.client( "ws://localhost:61614/stomp", "v11.stomp" );
+				var client; // = Stomp.client( "ws://192.168.0.212:61614/stomp", "v11.stomp" );
 
-				client.connect( "", "",
-					function() {
-					    client.subscribe("jms.topic.test",
-					    	function( message ) {
-					    	    alert( message );
-					        }, 
-							{ priority: 9 } 
-					    );
-					 
-						
-					}
-				);
+				function connect() {
+					//client = Stomp.overTCP('192.168.0.212', 61612);
+					client = Stomp.client( "ws://192.168.0.212:61614/stomp", "v11.stomp" );
+					client.connect( "", "",
+						function() {
+							console.log('Conectado no ActiveMQ via STOMP over Websocket.')
+						    client.subscribe("/topic/jms.topic.test",
+						    	function( message ) {
+						    	    alert( message );
+						    	    //message.ack();
+						        }, 
+								{ack: 'client', persistent: true, id:'stomp-ID-123456'} 
+						    );
+						}, function(error) {
+							console.log('STOMP: ' + error);
+						    setTimeout(connect, 5000);
+						    console.log('STOMP: Reconecting in 5 seconds');
+						}
+					);					
+				}
+
+				connect();
+
 				this.send = function(topic, msg) {
-					client.send(topic, { priority: 9 }, msg);
+					return client.send(topic, { }, msg);
 				}
 
 			});
@@ -50,7 +61,7 @@
 		        this.post = function(lote) {
 		        	//$http.defaults.headers.common.Authorization = 'Basic ' + 'YWRtaW46YWRtaW4='; 
 		        	//return $http.post('http://localhost:8161/api/message/ECO?type=queue&body=' + JSON.stringify(lote));
-		        	return ActiveMQ.send("jms.topic.test", JSON.stringify(lote));
+		        	return ActiveMQ.send("/topic/jms.topic.test", JSON.stringify(lote));
 		        }
 		    }]);
 
@@ -64,7 +75,7 @@
 		        }
 		    });
 
-			app.controller('myCtrl', ['$scope', '$document', 'Inventario', 'Material', function($scope, $document, Inventario, Material) {
+			app.controller('myCtrl', ['$scope', '$document', 'ActiveMQ', 'Inventario', 'Material', function($scope, $document, ActiveMQ, Inventario, Material) {
 				$scope.lote = {};
 				$scope.lotes = [];
 				$scope.barcode = "";
@@ -99,20 +110,22 @@
 
 							$scope.lotes.reverse().push($scope.lote);
 
-		                    if ($scope.lotes.length > 20) {
+		                    if ($scope.lotes.length > 10) {
 		                        $scope.lotes = $scope.lotes.slice($scope.lotes.length - 10);
 		                    }
 
 		                    $scope.lotes = $scope.lotes.reverse();
 
-							Inventario.post($scope.lote).then(function(response) {
-								//console.log("Baixando estoque");
-								//alert('Estoque baixado com sucesso.');
-							});
+							//Inventario.post($scope.lote);
+							ActiveMQ.send("/topic/jms.topic.test", JSON.stringify($scope.lote));
+					
+							//console.log("Baixando estoque");
+							//alert('Estoque baixado com sucesso.');
 					
 						} else {
 							$scope.msg = "Quantidade invalida.";
 						}
+
 						$scope.barcode = "";
 						$scope.lote = {};
 						$scope.quantidade = "";
